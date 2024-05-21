@@ -104,14 +104,15 @@ CREATE TABLE Recenzii (
     Rating INT,
     Comentariu VARCHAR2(255),
     DataRecenzie DATE,
-    FOREIGN KEY (IDClient) REFERENCES Clienti(IDClient)
+    FOREIGN KEY (IDClient) REFERENCES Clienti (IDClient)
 );
 
---13 TABELA NOUA
-CREATE TABLE Ingrediente (
-    IDIngredient INT PRIMARY KEY,
-    Nume VARCHAR(255),
-    FOREIGN KEY (IDFurnizor) REFERENCES Furnizori (IDFurnizor)
+--13 tabela noua
+CREATE TABLE AdaugaAroma (
+    IDClient INT,
+    IDAroma INT,
+    FOREIGN KEY (IDClient) REFERENCES Clienti (IDClient),
+    FOREIGN KEY (IDAroma) REFERENCES Arome (IDAroma)
 );
 
 
