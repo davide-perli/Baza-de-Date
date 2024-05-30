@@ -570,47 +570,46 @@ INSERT INTO Adresa (IDAdresa, Strada, Oras)
 VALUES (13, 'Soseaua Pajura 34', 'Bucuresti');
 
 
---10 Inserare date în tabela Vanzari
+--10 Inserare date în Vanzari
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (1, 1, 1, TO_DATE('2023-05-01', 'YYYY-MM-DD'), 5.99);
+VALUES (1, 1, 1, TO_DATE('2023-05-01 15:00:00', 'YYYY-MM-DD HH24:MI:SS'), 5.98);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (2, 2, 2, TO_DATE('2023-05-02', 'YYYY-MM-DD'), 30.50);
+VALUES (2, 2, 1, TO_DATE('2023-05-02 15:45:00', 'YYYY-MM-DD HH24:MI:SS'), 6.98);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (3, 4, 4, TO_DATE('2019-08-26', 'YYYY-MM-DD'), 6.57);
+VALUES (3, 3, 2, TO_DATE('2023-06-02 13:42:00', 'YYYY-MM-DD HH24:MI:SS'), 7.50);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (4, 7, 7, TO_DATE('2022-02-28', 'YYYY-MM-DD'), 30.50);
+VALUES (4, 4, 3, TO_DATE('2023-08-24 15:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3.00);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (5, 3, 3, TO_DATE('2024-03-24', 'YYYY-MM-DD'), 12.50);
+VALUES (5, 5, 4, TO_DATE('2021-07-30 11:35:00', 'YYYY-MM-DD HH24:MI:SS'), 11.82);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (6, 5, 5, TO_DATE('2021-09-19', 'YYYY-MM-DD'), 42.70);
+VALUES (6, 6, 5, TO_DATE('2021-01-02 17:41:00', 'YYYY-MM-DD HH24:MI:SS'), 14.23);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (7, 6, 6, TO_DATE('2021-07-05', 'YYYY-MM-DD'), 3.99);
+VALUES (7, 7, 6, TO_DATE('2022-08-21 14:48:00', 'YYYY-MM-DD HH24:MI:SS'), 9.95);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (8, 10, 10, TO_DATE('2023-06-10', 'YYYY-MM-DD'), 60.00);
+VALUES (8, 8, 7, TO_DATE('2024-03-09 11:39:00', 'YYYY-MM-DD HH24:MI:SS'), 8.92);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (9, 8, 8, TO_DATE('2024-04-08', 'YYYY-MM-DD'), 43.40);
+VALUES (9, 9, 8, TO_DATE('2023-12-02 10:28:00', 'YYYY-MM-DD HH24:MI:SS'), 12.24);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (10, 9, 9, TO_DATE('2024-03-02', 'YYYY-MM-DD'), 3.75);
+VALUES (10, 10, 9, TO_DATE('2023-11-29 19:25:00', 'YYYY-MM-DD HH24:MI:SS'), 8.55);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (11, 13, 13, TO_DATE('2020-10-17', 'YYYY-MM-DD'), 15.25);
+VALUES (11, 11, 10, TO_DATE('2023-09-25 18:18:00', 'YYYY-MM-DD HH24:MI:SS'), 11.99);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (12, 12, 12, TO_DATE('2020-08-02', 'YYYY-MM-DD'), 12.15);
+VALUES (12, 12, 11, TO_DATE('2024-01-12 20:30:00', 'YYYY-MM-DD HH24:MI:SS'), 8.20);
 
 INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (13, 11, 11, TO_DATE('2024-02-05', 'YYYY-MM-DD'), 36.40);
-
+VALUES (13, 13, 12, TO_DATE('2023-08-22 20:55:00', 'YYYY-MM-DD HH24:MI:SS'), 5.58);
 
 
 --11 Inserare date în tabela OrarMagazine
@@ -658,43 +657,43 @@ VALUES (13, 'Sambata', TO_DATE('10:15:00', 'HH24:MI:SS'), TO_DATE('22:15:00', 'H
 --12 Inserare date în tabela Recenzii
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (1, 4, 'Foarte mul?umit de calitatea produsului!', TO_DATE('2023-05-01', 'YYYY-MM-DD'), 1);
+VALUES (1, 4, 'Foarte multumit de calitatea produsului!', TO_DATE('2023-06-01', 'YYYY-MM-DD'), 1);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (2, 3, 'Produsul a fost OK, dar livrarea a întârziat', TO_DATE('2023-05-02', 'YYYY-MM-DD'), 2);
+VALUES (2, 3, 'Produsul a fost OK, dar livrarea a întârziat', TO_DATE('2023-06-02', 'YYYY-MM-DD'), 2);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (3, 5, 'Absolut delicios', TO_DATE('2023-05-14', 'YYYY-MM-DD'), 3);
+VALUES (3, 5, NULL, TO_DATE('2023-08-02', 'YYYY-MM-DD'), 3);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (4, 2, 'Produsul a fost bun, dar cam scump', TO_DATE('2019-08-26', 'YYYY-MM-DD'), 4);
+VALUES (4, 2, 'Produsul a fost bun, dar cam scump', TO_DATE('2023-09-24', 'YYYY-MM-DD'), 4);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (5, 5, 'Delicios', TO_DATE('2021-09-19', 'YYYY-MM-DD'), 5);
+VALUES (5, 5, 'Delicios', TO_DATE('2021-09-30', 'YYYY-MM-DD'), 5);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (6, 4, 'Foarte buna inghetata', TO_DATE('2021-07-05', 'YYYY-MM-DD'), 6);
+VALUES (6, 4, 'Foarte buna inghetata', TO_DATE('2021-03-02', 'YYYY-MM-DD'), 6);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (7, 3, 'A fost ok', TO_DATE('2022-02-28', 'YYYY-MM-DD'), 7);
+VALUES (7, 3, 'A fost ok', TO_DATE('2022-10-21', 'YYYY-MM-DD'), 7);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (8, 4, 'O inghetata delicioasa', TO_DATE('2024-04-08', 'YYYY-MM-DD'), 8);
+VALUES (8, 4, 'O inghetata delicioasa', TO_DATE('2024-04-09', 'YYYY-MM-DD'), 8);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (9, 5, 'Una dintre cele mai bune inghetate', TO_DATE('2024-03-02', 'YYYY-MM-DD'), 9);
+VALUES (9, 5, 'Una dintre cele mai bune inghetate', TO_DATE('2024-01-02', 'YYYY-MM-DD'), 9);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (10, 5, 'O sa ma reintorc cu siguranta', TO_DATE('2023-06-10', 'YYYY-MM-DD'), 10);
+VALUES (10, 5, 'O sa ma reintorc cu siguranta', TO_DATE('2023-12-29', 'YYYY-MM-DD'), 10);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (11, 2, 'Prea scump', TO_DATE('2020-10-17', 'YYYY-MM-DD'), 11);
+VALUES (11, 2, 'Prea scump', TO_DATE('2023-10-25', 'YYYY-MM-DD'), 11);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (12, 4, 'Un gust unic si autentic', TO_DATE('2020-08-02', 'YYYY-MM-DD'), 12);
+VALUES (12, 4, 'Un gust unic si autentic', TO_DATE('2024-02-12', 'YYYY-MM-DD'), 12);
 
 INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (13, 5, 'Extraordinar', TO_DATE('2020-10-17', 'YYYY-MM-DD'), 13);
+VALUES (13, 5, 'Extraordinar', TO_DATE('2023-07-22', 'YYYY-MM-DD'), 13);
 
 
 --13 Inserare date în tabela AdaugaAroma
@@ -767,6 +766,40 @@ SELECT * FROM Recenzii;
 SELECT * FROM AdaugaAroma;
 
 
+--Vizualizare complexa
+
+
+CREATE VIEW VanzariDetalii AS
+SELECT 
+    M.NumeMagazin AS Nume_Magazin,
+    C.Prenume AS Prenume_Client,
+    C.Nume AS Nume_Client,
+    A.NumeAroma AS Nume_Aroma,
+    CO.DataComanda AS Data_Comanda,
+    CO.SumaTotala AS Suma_Totala
+FROM 
+    Vanzari V
+JOIN 
+    Comenzi CO ON V.IDComanda = CO.IDComanda
+JOIN 
+    Magazine M ON V.IDMagazin = M.IDMagazin
+JOIN 
+    Clienti C ON V.IDClient = C.IDClient
+JOIN 
+    Arome A ON CO.IDAroma = A.IDAroma
+WHERE 
+    CO.DataComanda BETWEEN TO_DATE('2024-01-01', 'YYYY-MM-DD') AND TO_DATE('2024-05-01', 'YYYY-MM-DD');
+     --operatie LMD permisa deoarece pot lista toate vanzarile efectuate intr-un anumit interval de timp
+     
+SELECT * FROM VanzariDetalii;
+     
+--Operatie LMD nepermisa
+
+UPDATE VanzariDetalii
+SET Suma_Totala = 12.43
+WHERE Prenume_Client = 'Andrei';
+
+
 -- Cereri SQL
 
 --a)
@@ -803,22 +836,25 @@ WHERE IDMagazin IN (
                     HAVING COUNT(*) >= 1);
 
 
---d) fututa
-
-
-
---e)
+--d, e)
 SELECT 
     CASE 
-        WHEN LENGTH(Comentariu) > 20 THEN 'Lung'
+        WHEN LENGTH(r.Comentariu) > 20 THEN 'Lung'
         ELSE 'Scurt'
     END AS Lungime_Comentariu,
-    UPPER(IDClient) AS Utilizator_Mare,
-    SUBSTR(Comentariu, 1, 50) AS Comentariu_Scurt,
-    EXTRACT(MONTH FROM DataRecenzie) AS Luna_Recenzie,
-    EXTRACT(YEAR FROM DataRecenzie) AS An_Recenzie
+    UPPER(r.IDClient) AS Utilizator_Mare,
+    SUBSTR(r.Comentariu, 1, 50) AS Comentariu_Scurt,
+    EXTRACT(MONTH FROM r.DataRecenzie) AS Luna_Recenzie,
+    EXTRACT(YEAR FROM r.DataRecenzie) AS An_Recenzie, 
+    ADD_MONTHS(r.DataRecenzie, 6) AS Iese_Din_VIgoare,
+    MONTHS_BETWEEN(co.DataComanda, r.DataRecenzie) AS Distanta_Comanda_Recenzie, 
+    NVL(r.Comentariu, 'Fara Comentariu') AS Status_Comentariu,
+    DECODE(EXTRACT(YEAR FROM r.DataRecenzie), EXTRACT(YEAR FROM SYSDATE), 'Recenzie Actuala', 'Recenzie Veche') as Actualitate_Recenzie
 FROM 
-    Recenzii;
+    Recenzii r
+JOIN Clienti c ON(c.IDClient = r.IDClient)
+JOIN Vanzari v ON(v.IDClient = c.IDClient)
+JOIN Comenzi co ON(co.IDComanda = v.IDComanda);
     
 
 --f)
@@ -831,3 +867,26 @@ SELECT Nume || ' ' || Prenume AS Nume
 FROM Angajati
 WHERE Salariu = (SELECT MIN(sal.Salariu) FROM Angajati sal)
 AND IDMagazin IN (SELECT IDMagazin FROM sub);
+
+
+--Operatii de actualizare si suprimare a datelor utilizand subcereri
+
+UPDATE Recenzii
+SET Rating = 3
+WHERE IDRecenzie IN (
+    SELECT IDRecenzie
+    FROM Recenzii
+    WHERE Rating < 3
+);
+
+
+DELETE FROM Recenzii
+WHERE EXTRACT(YEAR FROM DataRecenzie) < 2022;
+
+
+UPDATE Recenzii
+SET Comentariu = 'Comentariu prea scurt'
+WHERE LENGTH(Comentariu) < 10;
+
+SELECT * FROM RECENZII;
+

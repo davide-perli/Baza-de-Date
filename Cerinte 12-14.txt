@@ -1,0 +1,123 @@
+--Vizualizare complexa
+
+
+CREATE VIEW VanzariDetalii AS
+SELECT 
+    M.NumeMagazin AS Nume_Magazin,
+    C.Prenume AS Prenume_Client,
+    C.Nume AS Nume_Client,
+    A.NumeAroma AS Nume_Aroma,
+    CO.DataComanda AS Data_Comanda,
+    CO.SumaTotala AS Suma_Totala
+FROM 
+    Vanzari V
+JOIN 
+    Comenzi CO ON V.IDComanda = CO.IDComanda
+JOIN 
+    Magazine M ON V.IDMagazin = M.IDMagazin
+JOIN 
+    Clienti C ON V.IDClient = C.IDClient
+JOIN 
+    Arome A ON CO.IDAroma = A.IDAroma
+WHERE 
+    CO.DataComanda BETWEEN TO_DATE('2024-01-01', 'YYYY-MM-DD') AND TO_DATE('2024-05-01', 'YYYY-MM-DD');
+     --operatie LMD permisa deoarece pot lista toate vanzarile efectuate intr-un anumit interval de timp
+     
+SELECT * FROM VanzariDetalii;
+     
+--Operatie LMD nepermisa
+
+UPDATE VanzariDetalii
+SET Suma_Totala = 12.43
+WHERE Prenume_Client = 'Andrei';
+
+
+-- Cereri SQL
+
+--a)
+SELECT * FROM Comenzi c, AdaugaAroma aa
+WHERE c.IDComanda = aa.IDComanda
+AND c.IDComanda in (SELECT aa.IDComanda from AdaugaAroma aa, Arome a
+                    WHERE aa.IDAroma = a.IDAroma
+                    AND a.IDAroma in (SELECT a.IDAroma FROM Arome a, Furnizori f
+                                      WHERE a.IDFurnizor = f.IDFurnizor
+                                      AND LOWER(f.NumeFurnizor) LIKE '%lidl%'));
+                                      
+--b)
+SELECT c.Prenume || ' ' || c.Nume AS NumeClient, COUNT(r.IDRecenzie) AS NumarRecenzii, AVG(r.Rating) AS RatingMediu
+FROM (
+    SELECT IDClient, IDRecenzie, Rating
+    FROM Recenzii
+) r
+JOIN (
+    SELECT IDClient, Prenume, Nume
+    FROM Clienti
+) c ON r.IDClient = c.IDClient
+GROUP BY c.Prenume, c.Nume;
+
+
+--c)
+SELECT NumeMagazin
+FROM Magazine
+WHERE IDMagazin IN (
+                    SELECT M.IDMagazin
+                    FROM Magazine M
+                    JOIN OrarMagazine OM ON M.IDOrar = OM.IDOrar
+                    JOIN Adresa A ON M.IDAdresa = A.IDAdresa
+                    GROUP BY M.IDMagazin
+                    HAVING COUNT(*) >= 1);
+
+
+--d, e)
+SELECT 
+    CASE 
+        WHEN LENGTH(r.Comentariu) > 20 THEN 'Lung'
+        ELSE 'Scurt'
+    END AS Lungime_Comentariu,
+    UPPER(r.IDClient) AS Utilizator_Mare,
+    SUBSTR(r.Comentariu, 1, 50) AS Comentariu_Scurt,
+    EXTRACT(MONTH FROM r.DataRecenzie) AS Luna_Recenzie,
+    EXTRACT(YEAR FROM r.DataRecenzie) AS An_Recenzie, 
+    ADD_MONTHS(r.DataRecenzie, 6) AS Iese_Din_VIgoare,
+    MONTHS_BETWEEN(co.DataComanda, r.DataRecenzie) AS Distanta_Comanda_Recenzie, 
+    NVL(r.Comentariu, 'Fara Comentariu') AS Status_Comentariu,
+    DECODE(EXTRACT(YEAR FROM r.DataRecenzie), EXTRACT(YEAR FROM SYSDATE), 'Recenzie Actuala', 'Recenzie Veche') as Actualitate_Recenzie
+FROM 
+    Recenzii r
+JOIN Clienti c ON(c.IDClient = r.IDClient)
+JOIN Vanzari v ON(v.IDClient = c.IDClient)
+JOIN Comenzi co ON(co.IDComanda = v.IDComanda);
+    
+
+--f)
+WITH sub AS (
+    SELECT m.IDMagazin
+    FROM Magazine m
+    WHERE m.IDMagazin = 6
+)
+SELECT Nume || ' ' || Prenume AS Nume
+FROM Angajati
+WHERE Salariu = (SELECT MIN(sal.Salariu) FROM Angajati sal)
+AND IDMagazin IN (SELECT IDMagazin FROM sub);
+
+
+--Operatii de actualizare si suprimare a datelor utilizand subcereri
+
+UPDATE Recenzii
+SET Rating = 3
+WHERE IDRecenzie IN (
+    SELECT IDRecenzie
+    FROM Recenzii
+    WHERE Rating < 3
+);
+
+
+DELETE FROM Recenzii
+WHERE EXTRACT(YEAR FROM DataRecenzie) < 2022;
+
+
+UPDATE Recenzii
+SET Comentariu = 'Comentariu prea scurt'
+WHERE LENGTH(Comentariu) < 10;
+
+SELECT * FROM RECENZII;
