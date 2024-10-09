@@ -1,19 +1,20 @@
+DROP SEQUENCE SecventaComanda;
+
 DROP TABLE Vanzari CASCADE CONSTRAINTS;
 DROP TABLE Comenzi CASCADE CONSTRAINTS;
 DROP TABLE Clienti CASCADE CONSTRAINTS;
-DROP TABLE Sponsori CASCADE CONSTRAINTS;
-DROP TABLE Manageri CASCADE CONSTRAINTS;
+DROP TABLE Sponsor CASCADE CONSTRAINTS;
 DROP TABLE Magazine CASCADE CONSTRAINTS;
 DROP TABLE Furnizori CASCADE CONSTRAINTS;
 DROP TABLE Arome CASCADE CONSTRAINTS;
-DROP TABLE PreturiInghetata CASCADE CONSTRAINTS;
 DROP TABLE Angajati CASCADE CONSTRAINTS;
 DROP TABLE OrarMagazine CASCADE CONSTRAINTS;
-DROP TABLE RecenziiProduse CASCADE CONSTRAINTS;
-DROP TABLE ReclamatiiClienti CASCADE CONSTRAINTS;
+DROP TABLE Recenzii CASCADE CONSTRAINTS;
 DROP TABLE AdaugaAroma CASCADE CONSTRAINTS;
+DROP TABLE Adresa CASCADE CONSTRAINTS;
 
-DELETE FROM Manageri;
+DROP VIEW ComenziDetalii;
+
 DELETE FROM AdaugaAroma;
 DELETE FROM Recenzii;
 DELETE FROM Vanzari;
@@ -27,14 +28,24 @@ DELETE FROM Sponsor;
 DELETE FROM OrarMagazine;
 DELETE FROM Adresa;
 
+-- Creare secventa
+CREATE SEQUENCE SecventaComanda
+START WITH 10000
+INCREMENT BY 1
+MAXVALUE 99999
+NOCYCLE
+NOCACHE;
+
 -- Creare tabele
 --1
 CREATE TABLE Magazine (
     IDMagazin INT PRIMARY KEY,
-    NumeMagazin VARCHAR2(100) NOT NULL,
     IDAdresa INT,
     IDOrar INT,
     IDSponsor INT,
+    NumeMagazin VARCHAR2(100) UNIQUE,
+    RentabilitateOra NUMBER(5, 2),
+    CONSTRAINT ConstraintProcent CHECK(RentabilitateOra > 0 AND RentabilitateOra < 100),
     FOREIGN KEY (IDAdresa) REFERENCES Adresa (IDAdresa),
     FOREIGN KEY (IDOrar) REFERENCES OrarMagazine(IDOrar),
     FOREIGN KEY (IDSponsor) REFERENCES  Sponsor(IDSponsor)
@@ -51,21 +62,22 @@ CREATE TABLE Clienti (
 
 --3
 CREATE TABLE Comenzi (
-    IDComanda INT PRIMARY KEY,
-    IDClient INT,
-    IDAroma INT,
-    DataComanda DATE NOT NULL,
-    SumaTotala NUMBER(10, 2) NOT NULL,
-    FOREIGN KEY (IDClient) REFERENCES Clienti(IDClient),
-    FOREIGN KEY (IDAroma) REFERENCES Arome(IDAroma)
+    IDComanda NUMBER(5) PRIMARY KEY,
+    DataComanda TIMESTAMP NOT NULL,
+    TipPlata CHAR(4) NOT NULL,
+    CONSTRAINT Plata CHECK(TipPlata = 'card' OR TipPlata = 'cash')
 );
 
 --4
 CREATE TABLE Sponsor (
     IDSponsor INT PRIMARY KEY,
+    IDAdresa INT,
     Nume VARCHAR2(50) NOT NULL,
     Email VARCHAR2(100),
-    NumarTelefon VARCHAR2(15)
+    NumarTelefon VARCHAR2(15),
+    SumaInvestitie NUMBER(6, 2) NOT NULL,
+    NumarEvenimente INT,
+    FOREIGN KEY (IDAdresa) REFERENCES Adresa (IDAdresa)
 );
 
 --5
@@ -76,127 +88,116 @@ CREATE TABLE Angajati (
     Prenume VARCHAR2(100) NOT NULL,
     DataAngajare DATE NOT NULL,
     Salariu DECIMAL(10, 2) NOT NULL,
-    FOREIGN KEY(IDMagazin) REFERENCES  Magazine(IDMagazin)
+    FOREIGN KEY (IDMagazin) REFERENCES Magazine(IDMagazin)
 );
 
 --6
-CREATE TABLE Manageri (
-    IDManager INT PRIMARY KEY,
-    FOREIGN KEY (IDManager) REFERENCES Angajati(IDAngajat)
+CREATE TABLE Furnizori (
+    IDFurnizor INT PRIMARY KEY,
+    NumeFurnizor VARCHAR2(100) NOT NULL,
+    Email VARCHAR2(100),
+    NumarTelefon VARCHAR2(15)
 );
 
 --7
-CREATE TABLE Furnizori (
-    IDFurnizor INT PRIMARY KEY,
-    IDAdresa INT,
-    NumeFurnizor VARCHAR2(100) NOT NULL,
-    Email VARCHAR2(100),
-    NumarTelefon VARCHAR2(15),
-    FOREIGN KEY(IDAdresa) REFERENCES Adresa (IDAdresa)
-);
-
---8
 CREATE TABLE Arome (
     IDAroma INT PRIMARY KEY,
     IDFurnizor INT,
     Pret DECIMAL(10, 2) NOT NULL,
-    NumeAroma VARCHAR2(100) NOT NULL,
-    FOREIGN KEY (IDFurnizor) REFERENCES Furnizori (IDFurnizor)
+    NumeAroma VARCHAR2(100) UNIQUE,
+    FOREIGN KEY (IDFurnizor) REFERENCES Furnizori (IDFurnizor) ON DELETE SET NULL
 );
 
---9
+--8
 CREATE TABLE Adresa (
-
     IDAdresa INT PRIMARY KEY,
     Oras VARCHAR(255),
     Strada VARCHAR(255)
 );
 
--- 10
+--9
 CREATE TABLE Vanzari (
     IDClient INT,
+    IDAngajat INT,
     IDComanda INT,
-    IDMagazin INT,
-    DataVanzare DATE,
-    Suma DECIMAL(10, 2),
-    PRIMARY KEY (IDClient, IDComanda, IDMagazin),
+    DataVanzare TIMESTAMP NOT NULL,
+    PRIMARY KEY (IDClient, IDAngajat, IDComanda),
     FOREIGN KEY (IDClient) REFERENCES Clienti(IDClient),
-    FOREIGN KEY (IDComanda) REFERENCES Comenzi(IDComanda),
-    FOREIGN KEY (IDMagazin) REFERENCES Magazine(IDMagazin)
+    FOREIGN KEY (IDAngajat) REFERENCES Angajati(IDAngajat),
+    FOREIGN KEY (IDComanda) REFERENCES Comenzi(IDComanda) ON DELETE CASCADE
+);
+
+--10
+CREATE TABLE OrarMagazine (
+    IDOrar INT PRIMARY KEY,
+    OraDeschidere TIMESTAMP NOT NULL,
+    OraInchidere TIMESTAMP NOT NULL
 );
 
 --11
-CREATE TABLE OrarMagazine (
-    IDOrar INT PRIMARY KEY,
-    ZiuaSaptamanii VARCHAR2(15),
-    OraDeschidere TIMESTAMP,
-    OraInchidere TIMESTAMP
-);
-
---12
 CREATE TABLE Recenzii (
     IDRecenzie INT PRIMARY KEY,
     IDClient INT,
-    Rating INT,
+    Rating INT NOT NULL,
     Comentariu VARCHAR2(255),
     DataRecenzie DATE,
     FOREIGN KEY (IDClient) REFERENCES Clienti (IDClient)
 );
 
---13
+--12
 CREATE TABLE AdaugaAroma (
     IDComanda INT,
     IDAroma INT,
+    Cantitate INT NOT NULL,
     PRIMARY KEY (IDComanda, IDAroma),
-    FOREIGN KEY (IDComanda) REFERENCES Comenzi (IDComanda),
+    FOREIGN KEY (IDComanda) REFERENCES Comenzi (IDComanda) ON DELETE CASCADE,
     FOREIGN KEY (IDAroma) REFERENCES Arome (IDAroma)
 );
 
 
--- Inserare date în tabele
+-- Inserare date  n tabele
 
+--1 Inserare date  n Magazine
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (1, 1, 7, 11, 'Pufic 1', 70.90);
 
---1 Inserare date în Magazine
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (1, 'Pufic 1', 1, 1, 1);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (2, 2, 5, 11, 'Pufic 2', 57.50);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (2, 'Pufic 2', 2, 2, 2);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (3, 3, 8, 3, 'Pufic 3', 49.99);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (3, 'Pufic 3', 3, 3, 3);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (4, 4, 8, 1, 'Pufic 4', 23.79);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (4, 'Pufic 4', 4, 4, 4);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (5, 5, 8, 5, 'Pufic 5', 78.80);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (5, 'Pufic 5', 5, 5, 5);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (6, 6, 1, 6, 'Pufic 6', 99.99); -- conceptual trebuie sa existe un maxim
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (6, 'Pufic 6', 6, 6, 6);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (7, 7, 3, 8, 'Pufic 7', 75.81);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (7, 'Pufic 7', 7, 7, 7);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (8, 8, 2, 2, 'Pufic 8', 68.99);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (8, 'Pufic 8', 8, 8, 8);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (9, 9, 3, 7, 'Pufic 9', 95.55);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (9, 'Pufic 9', 9, 9, 9);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (10, 10, 4, 4, 'Pufic 10', 57.89);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (10, 'Pufic 10', 10, 10, 10);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (11, 11, 7, 2, 'Pufic 11', 81.23);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (11, 'Pufic 11', 11, 11, 11);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (12, 12, 6, 10, 'Pufic 12', 87.47);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (12, 'Pufic 12', 12, 12, 12);
+INSERT INTO Magazine (IDMagazin, IDAdresa, IDOrar, IDSponsor, NumeMagazin, RentabilitateOra)
+VALUES (13, 13, 5, 9, 'Pufic 13', 66.11);
 
-INSERT INTO Magazine (IDMagazin, NumeMagazin, IDAdresa, IDOrar, IDSponsor)
-VALUES (13, 'Pufic 13', 13, 13, 13);
-
---2 Inserare date în Clienti
+--2 Inserare date  n Clienti
 INSERT INTO Clienti (IDClient, Prenume, Nume, Email, NumarTelefon)
 VALUES (1, 'Alin', 'George', 'alin.george@gmail.com', '1234567890');
 
@@ -237,89 +238,103 @@ INSERT INTO Clienti (IDClient, Prenume, Nume, Email, NumarTelefon)
 VALUES (13, 'Melisa', 'Marcel', 'melisa.marcel@gmail.com', '0554121363');
 
 
---3 Inserare date în Comenzi
+--3 Inserare date  n Comenzi
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (1, 1, 1, TO_DATE('2023-05-01 14:30:00', 'YYYY-MM-DD HH24:MI:SS'), 5.98);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2023-05-01 14:30:00', 'YYYY-MM-DD HH24:MI:SS'), 'cash');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (2, 1, 3, TO_DATE('2023-05-02 15:45:00', 'YYYY-MM-DD HH24:MI:SS'), 6.98);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2023-05-02 15:45:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (3, 2, 3, TO_DATE('2023-06-02 13:42:00', 'YYYY-MM-DD HH24:MI:SS'), 7.50);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2023-06-02 13:42:00', 'YYYY-MM-DD HH24:MI:SS'), 'cash');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (4, 3, 4, TO_DATE('2024-08-24 15:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3.00);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2022-08-24 15:00:00', 'YYYY-MM-DD HH24:MI:SS'), 'cash');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (5, 4, 5, TO_DATE('2024-07-30 11:35:00', 'YYYY-MM-DD HH24:MI:SS'), 11.82);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2024-07-30 11:35:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (6, 5, 6, TO_DATE('2024-01-02 17:41:00', 'YYYY-MM-DD HH24:MI:SS'), 14.23);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2022-01-02 17:41:00', 'YYYY-MM-DD HH24:MI:SS'), 'cash');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (7, 6, 7, TO_DATE('2024-08-21 14:48:00', 'YYYY-MM-DD HH24:MI:SS'), 9.95);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2024-08-21 14:48:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (8, 7, 8, TO_DATE('2024-03-09 11:39:00', 'YYYY-MM-DD HH24:MI:SS'), 8.92);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2024-03-09 11:39:00', 'YYYY-MM-DD HH24:MI:SS'), 'cash');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (9, 8, 9, TO_DATE('2024-12-02 10:28:00', 'YYYY-MM-DD HH24:MI:SS'), 12.24);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2023-12-02 10:28:00', 'YYYY-MM-DD HH24:MI:SS'), 'cash');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (10, 9, 10, TO_DATE('2024-11-29 19:25:00', 'YYYY-MM-DD HH24:MI:SS'), 8.55);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2024-11-29 19:25:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (11, 10, 11, TO_DATE('2024-09-25 18:18:00', 'YYYY-MM-DD HH24:MI:SS'), 11.99);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2024-09-25 18:18:00', 'YYYY-MM-DD HH24:MI:SS'), 'cash');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (12, 11, 12, TO_DATE('2024-01-12 20:30:00', 'YYYY-MM-DD HH24:MI:SS'), 8.20);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2024-01-12 20:30:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
 
-INSERT INTO Comenzi (IDComanda, IDClient, IDAroma, DataComanda, SumaTotala)
-VALUES (13, 12, 13, TO_DATE('2024-06-22 20:55:00', 'YYYY-MM-DD HH24:MI:SS'), 5.58);
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2024-06-22 20:55:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
+
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2024-05-19 09:55:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
+
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2023-02-09 11:23:00', 'YYYY-MM-DD HH24:MI:SS'), 'cash');
+
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2023-04-14 12:35:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
+
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2023-03-11 17:21:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
+
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2023-11-17 20:50:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
+
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2024-05-13 14:45:00', 'YYYY-MM-DD HH24:MI:SS'), 'card');
+
+INSERT INTO Comenzi (IDComanda, DataComanda, TipPlata)
+VALUES (SecventaComanda.nextval, TO_DATE('2024-09-09 12:45:00', 'YYYY-MM-DD HH24:MI:SS'), 'cash');
 
 
---4 Inserare date în Sponsor
+--4 Inserare date  n Sponsor
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (1, 'DairyQueen', 'dairy.queen@gmail.com', '0880101170');
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (1, 5, 'DairyQueen', 'dairy.queen@gmail.com', '0880101170', 3455.99, 3);
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (2, 'Alpro', 'alpro@gmail.com', '0770101170');
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (2, 3, 'Alpro', 'alpro@gmail.com', '0770101170', 5670.20, 4);
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (3, 'Olympus', 'olympus@gmail.com', '021101170');
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (3, 14, 'Olympus', 'olympus@gmail.com', '021101170', 4320.50, 6);
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (4, 'Zuzu', 'zuzu@gmail.com', '0880187170');
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (4, 17, 'Zuzu', 'zuzu@gmail.com', '0880187170', 6779.99, 3);
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (5, 'Heidi', 'heidi@gmail.com', '0310107870');
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (5, 12, 'Heidi', 'heidi@gmail.com', '0310107870', 7000.50, 6);
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (6, 'Milka', 'milka@gmail.com', '0550101170');
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (6, 12, 'Milka', 'milka@gmail.com', '0550101170', 9100.30, 6);
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (7, 'Michelin', 'michelin@gmail.com', '0450101170');
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (7, 2, 'Michelin', 'michelin@gmail.com', '0450101170', 5000.60, 3);
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (8, 'PlusINC', 'plus@gmail.com', '0225434587');
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (8, 15, 'PlusINC', 'plus@gmail.com', '0225434587', 3029.99, 2);
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (9, 'Ikea', 'ikea@gmail.com', '0334101170');
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (9, 16, 'Ikea', 'ikea@gmail.com', '0334101170', 7499.99, 6);
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (10, 'XXLUX', 'xxlux@gmail.com', '0775801170');
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (10, 18, 'XXLUX', 'xxlux@gmail.com', '0775801170', 9350.30, 3);
 
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (11, 'ToyINC', 'toy@gmail.com', '0880108541');
-
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (12, 'Decathlon', 'decathlon@gmail.com', '0780254170');
-
-INSERT INTO Sponsor (IDSponsor, Nume, Email, NumarTelefon)
-VALUES (13, 'Metro', 'metro@gmail.com', '0586401170');
-
+INSERT INTO Sponsor (IDSponsor, IDAdresa, Nume, Email, NumarTelefon, SumaInvestitie, NumarEvenimente)
+VALUES (11, 16, 'Decathlon', 'decathlon@gmail.com', '0780254170', 2345.99, 2);
 
 --5 Inserare date pentru Angajati
 
@@ -330,28 +345,28 @@ INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu
 VALUES (2, 1, 'Popa', 'Iooan', TO_DATE('2020-03-18', 'YYYY-MM-DD'), 3300.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (3, 2, 'Ionescu', 'Maria', TO_DATE('2019-05-20', 'YYYY-MM-DD'), 4000.00);
+VALUES (3, 1, 'Ionescu', 'Maria', TO_DATE('2019-05-20', 'YYYY-MM-DD'), 4000.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (4, 2, 'Ioan', 'Antonio', TO_DATE('2018-012-20', 'YYYY-MM-DD'), 4000.00);
+VALUES (4, 2, 'Ioan', 'Antonio', TO_DATE('2018-12-20', 'YYYY-MM-DD'), 4000.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
 VALUES (5, 3, 'Constantinescu', 'Ana', TO_DATE('2021-03-10', 'YYYY-MM-DD'), 3200.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (6, 3, 'Constantin', 'Teo', TO_DATE('2021-02-10', 'YYYY-MM-DD'), 3210.00);
+VALUES (6, 10, 'Constantin', 'Teo', TO_DATE('2021-02-10', 'YYYY-MM-DD'), 3210.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (7, 4, 'Dumitrescu', 'Mihai', TO_DATE('2018-11-05', 'YYYY-MM-DD'), 4200.00);
+VALUES (7, 3, 'Dumitrescu', 'Mihai', TO_DATE('2018-11-05', 'YYYY-MM-DD'), 4200.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
 VALUES (8, 4, 'Dumitru', 'Matei', TO_DATE('2018-09-04', 'YYYY-MM-DD'), 4100.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (9, 5, 'Armin', 'Matei', TO_DATE('2024-05-14', 'YYYY-MM-DD'), 2200.00);
+VALUES (9, 2, 'Armin', 'Matei', TO_DATE('2024-05-14', 'YYYY-MM-DD'), 2200.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (10, 5, 'Anastasia', 'Maria', TO_DATE('2024-01-10', 'YYYY-MM-DD'), 2300.00);
+VALUES (10, 1, 'Anastasia', 'Maria', TO_DATE('2024-01-10', 'YYYY-MM-DD'), 2300.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
 VALUES (11, 6, 'Giunca', 'Andrei', TO_DATE('2024-05-22', 'YYYY-MM-DD'), 2000.00);
@@ -360,7 +375,7 @@ INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu
 VALUES (12, 6, 'Gheorge', 'Roberto', TO_DATE('2022-07-25', 'YYYY-MM-DD'), 2800.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (13, 7, 'Barca', 'Stefan', TO_DATE('2023-10-03', 'YYYY-MM-DD'), 2700.00);
+VALUES (13, 9, 'Barca', 'Stefan', TO_DATE('2023-10-03', 'YYYY-MM-DD'), 2700.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
 VALUES (14, 7, 'Bankai', 'Mihai', TO_DATE('2023-07-30', 'YYYY-MM-DD'), 2750.00);
@@ -369,16 +384,16 @@ INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu
 VALUES (15, 8, 'Stefanescu', 'Andi', TO_DATE('2022-09-14', 'YYYY-MM-DD'), 3000.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (16, 8, 'Stamate', 'Andrei', TO_DATE('2022-02-21', 'YYYY-MM-DD'), 3100.00);
+VALUES (16, 5, 'Stamate', 'Andrei', TO_DATE('2022-02-21', 'YYYY-MM-DD'), 3100.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (17, 9, 'Scarlat', 'Ana', TO_DATE('2021-07-23', 'YYYY-MM-DD'), 4000.00);
+VALUES (17, 6, 'Scarlat', 'Ana', TO_DATE('2021-07-23', 'YYYY-MM-DD'), 4000.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
 VALUES (18, 9, 'Voinescu', 'Anastasia', TO_DATE('2020-08-27', 'YYYY-MM-DD'), 4300.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (19, 10, 'Enache', 'Maria', TO_DATE('2020-11-17', 'YYYY-MM-DD'), 4200.00);
+VALUES (19, 11, 'Enache', 'Maria', TO_DATE('2020-11-17', 'YYYY-MM-DD'), 4200.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
 VALUES (20, 10, 'Enitei', 'Andreea', TO_DATE('2020-10-19', 'YYYY-MM-DD'), 4100.00);
@@ -390,145 +405,114 @@ INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu
 VALUES (22, 11, 'Tunaru', 'Monica', TO_DATE('2019-08-05', 'YYYY-MM-DD'), 4100.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (23, 12, 'Enica', 'Raluca', TO_DATE('2023-08-25', 'YYYY-MM-DD'), 3100.00);
+VALUES (23, 9, 'Enica', 'Raluca', TO_DATE('2023-08-25', 'YYYY-MM-DD'), 3100.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
 VALUES (24, 12, 'Afina', 'Ramona', TO_DATE('2023-08-20', 'YYYY-MM-DD'), 3100.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
-VALUES (25, 13, 'Anapol', 'Denisa', TO_DATE('2022-09-30', 'YYYY-MM-DD'), 3700.00);
+VALUES (25, 3, 'Anapol', 'Denisa', TO_DATE('2022-09-30', 'YYYY-MM-DD'), 3700.00);
 
 INSERT INTO Angajati (IDAngajat, IDMagazin, Nume, Prenume, DataAngajare, Salariu)
 VALUES (26, 13, 'Ceausu', 'Dakia', TO_DATE('2022-07-29', 'YYYY-MM-DD'), 3600.00);
 
+--6 Inserare date  n Furnizori
 
---6 Inserare date în Manageri
+INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon)
+VALUES (1, 'Chocolate Factory', 'chocolate.factory@gmail.com', '1234567890');
 
-INSERT INTO Manageri (IDManager)
-VALUES (1);
+INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon)
+VALUES (2, 'Carrefour', 'carrefour@gmail.com', '9876543210');
 
-INSERT INTO Manageri (IDManager)
-VALUES (2);
+INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon)
+VALUES (3, 'Lidl', 'lidl@gmail.com', '5558889999');
 
-INSERT INTO Manageri (IDManager)
-VALUES (3);
+INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon)
+VALUES (4, 'MegaImage', 'megaimage@gmail.com', '1548889939');
 
-INSERT INTO Manageri (IDManager)
-VALUES (4);
+INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon)
+VALUES (5, 'Oreo', 'oreo@gmail.com', '07558889987');
 
-INSERT INTO Manageri (IDManager)
-VALUES (5);
+INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon)
+VALUES (6, 'GusturiRomanesti', 'gusturiromanesti@gmail.com', '03225689999');
 
-INSERT INTO Manageri (IDManager)
-VALUES (6);
+INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon)
+VALUES (7, 'Mizo', 'mizo@gmail.com', '355779999');
 
-INSERT INTO Manageri (IDManager)
-VALUES (7);
+INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon)
+VALUES (8, 'ChocoMix', 'chocomix@gmail.com', '0658389979');
 
-INSERT INTO Manageri (IDManager)
-VALUES (8);
+INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon)
+VALUES (9, 'CocaCola', 'cocacola@gmail.com', '2158866499');
 
-INSERT INTO Manageri (IDManager)
-VALUES (9);
-
-INSERT INTO Manageri (IDManager)
-VALUES (10);
-
-INSERT INTO Manageri (IDManager)
-VALUES (11);
-
-INSERT INTO Manageri (IDManager)
-VALUES (12);
-
-INSERT INTO Manageri (IDManager)
-VALUES (13);
+INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon)
+VALUES (10, 'Fruitty', 'fruitty@gmail.com', '041548523');
 
 
---7 Inserare date în Furnizori
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (1, 'Chocolate Factory', 'chocolate.factory@gmail.com', '1234567890', 1);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (2, 'Carrefour', 'carrefour@gmail.com', '9876543210', 2);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (3, 'Lidl', 'lidl@gmail.com', '5558889999', 3);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (4, 'Ladorna', 'ladorna@gmail.com', '5912589999', 4);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (5, 'MegaImage', 'megaimage@gmail.com', '1548889939', 5);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (6, 'Oreo', 'oreo@gmail.com', '07558889987', 6);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (7, 'GusturiRomanesti', 'gusturiromanesti@gmail.com', '03225689999', 7);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (8, 'Mizo', 'mizo@gmail.com', '355779999', 8);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (9, 'ChocoMix', 'chocomix@gmail.com', '0658389979', 9);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (10, 'Pepsi', 'pepsi@gmail.com', '3338889991', 10);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (11, 'CocaCola', 'cocacola@gmail.com', '2158866499', 11);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (12, 'Agricult', 'agricult@gmail.com', '0345124695', 12);
-
-INSERT INTO Furnizori (IDFurnizor, NumeFurnizor, Email, NumarTelefon, IDAdresa)
-VALUES (13, 'Fruitty', 'fruitty@gmail.com', '041548523', 13);
-
-
---8 Inserare date în Arome
+--7 Inserare date  n Arome
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (1, 1, 3.00, 'Fistic');
+VALUES (1, 1, 5.50, 'Fistic');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (2, 2, 3.00, 'Ciocolata');
+VALUES (2, 1, 2.50, 'Ciocolata');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (3, 3, 3.00, 'Cookies and Cream');
+VALUES (3, 1, 3.45, 'Cookies and Cream');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (4, 4, 3.00, 'Bubblegum');
+VALUES (4, 2, 1.45, 'Bubblegum');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (5, 5, 3.00, 'Cirese');
+VALUES (5, 4, 5.35, 'Cirese');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (6, 6, 3.00, 'Kinder');
+VALUES (6, 1, 6.75, 'Kinder');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
 VALUES (7, 7, 3.00, 'Banane');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (8, 8, 3.00, 'Oreo');
+VALUES (8, 5, 5.65, 'Oreo');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (9, 9, 3.00, 'Caise');
+VALUES (9, 10, 2.75, 'Caise');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (10, 10, 3.00, 'Menta');
+VALUES (10, 10, 3.25, 'Menta');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (11, 11, 3.00, 'Alune');
+VALUES (11, 2, 3.00, 'Alune');
 
 INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
-VALUES (12, 12, 3.00, 'Portocale');
+VALUES (12, 6, 1.65, 'Portocale');
 
-INSERT INTO Arome (IDAroma,IDFurnizor, Pret, NumeAroma)
-VALUES (13, 13, 3.00, 'Caramel');
+INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
+VALUES (13, 8, 4.15, 'Caramel');
+
+INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
+VALUES (14, 10, 3.00, 'Lamaie');
+
+INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
+VALUES (15, 10, 3.25, 'Fructe de padure');
+
+INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
+VALUES (16, 7, 2.00, 'Vanilie');
+
+INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
+VALUES (17, 3, 3.00, 'Zmeura');
+
+INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
+VALUES (18, 4, 6.55, 'Nuci si smochine');
+
+INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
+VALUES (19, 9, 4.55, 'Coca Cola');
+
+INSERT INTO Arome (IDAroma, IDFurnizor, Pret, NumeAroma)
+VALUES (20, 8, 4.40, 'Triple Choco');
 
 
---9 Inserare date în Adresa
+--8 Inserare date  n Adresa
 
 INSERT INTO Adresa (IDAdresa, Strada, Oras)
 VALUES (1, 'Bulevardul Grigorescu 3', 'Bucuresti');
@@ -569,173 +553,252 @@ VALUES (12, 'Soseaua Oltenitei 6', 'Bucuresti');
 INSERT INTO Adresa (IDAdresa, Strada, Oras)
 VALUES (13, 'Soseaua Pajura 34', 'Bucuresti');
 
+INSERT INTO Adresa (IDAdresa, Strada, Oras)
+VALUES (14, 'Bulevardul Roseti 34', 'Bucuresti');
 
---10 Inserare date în Vanzari
+INSERT INTO Adresa (IDAdresa, Strada, Oras)
+VALUES (15, 'Soseaua Pajura 5', 'Bucuresti');
 
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (1, 1, 1, TO_DATE('2023-05-01 15:00:00', 'YYYY-MM-DD HH24:MI:SS'), 5.98);
+INSERT INTO Adresa (IDAdresa, Strada, Oras)
+VALUES (16, 'Bulevardul Grigorescu 34', 'Bucuresti');
 
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (2, 2, 1, TO_DATE('2023-05-02 15:45:00', 'YYYY-MM-DD HH24:MI:SS'), 6.98);
+INSERT INTO Adresa (IDAdresa, Strada, Oras)
+VALUES (17, 'Bulevardul Decebal 17', 'Bucuresti');
 
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (3, 3, 2, TO_DATE('2023-06-02 13:42:00', 'YYYY-MM-DD HH24:MI:SS'), 7.50);
-
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (4, 4, 3, TO_DATE('2023-08-24 15:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3.00);
-
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (5, 5, 4, TO_DATE('2021-07-30 11:35:00', 'YYYY-MM-DD HH24:MI:SS'), 11.82);
-
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (6, 6, 5, TO_DATE('2021-01-02 17:41:00', 'YYYY-MM-DD HH24:MI:SS'), 14.23);
-
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (7, 7, 6, TO_DATE('2022-08-21 14:48:00', 'YYYY-MM-DD HH24:MI:SS'), 9.95);
-
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (8, 8, 7, TO_DATE('2024-03-09 11:39:00', 'YYYY-MM-DD HH24:MI:SS'), 8.92);
-
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (9, 9, 8, TO_DATE('2023-12-02 10:28:00', 'YYYY-MM-DD HH24:MI:SS'), 12.24);
-
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (10, 10, 9, TO_DATE('2023-11-29 19:25:00', 'YYYY-MM-DD HH24:MI:SS'), 8.55);
-
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (11, 11, 10, TO_DATE('2023-09-25 18:18:00', 'YYYY-MM-DD HH24:MI:SS'), 11.99);
-
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (12, 12, 11, TO_DATE('2024-01-12 20:30:00', 'YYYY-MM-DD HH24:MI:SS'), 8.20);
-
-INSERT INTO Vanzari (IDClient, IDComanda, IDMagazin, DataVanzare, Suma)
-VALUES (13, 13, 12, TO_DATE('2023-08-22 20:55:00', 'YYYY-MM-DD HH24:MI:SS'), 5.58);
+INSERT INTO Adresa (IDAdresa, Strada, Oras)
+VALUES (18, 'Strada Lunca Bradului 3', 'Bucuresti');
 
 
---11 Inserare date în tabela OrarMagazine
+--9 Inserare date  n Vanzari
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (1, 'Luni', TO_DATE('08:00:00', 'HH24:MI:SS'), TO_DATE('20:00:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (1, 21, 10000, TO_DATE('2023-05-01 15:00:00', 'YYYY-MM-DD HH24:MI:SS'));-- dupa 30 min
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (2, 'Marti', TO_DATE('09:00:00', 'HH24:MI:SS'), TO_DATE('21:00:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (1, 1, 10001, TO_DATE('2023-05-04 15:45:00', 'YYYY-MM-DD HH24:MI:SS'));-- dupa 2 zile
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (3, 'Miercuri', TO_DATE('10:00:00', 'HH24:MI:SS'), TO_DATE('22:00:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (1, 3, 10002, TO_DATE('2023-06-02 13:42:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (4, 'Joi', TO_DATE('07:30:00', 'HH24:MI:SS'), TO_DATE('19:30:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (2, 6, 10003, TO_DATE('2022-08-27 17:00:00', 'YYYY-MM-DD HH24:MI:SS'));-- dupa 3 zile
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (5, 'Vineri', TO_DATE('08:30:00', 'HH24:MI:SS'), TO_DATE('20:30:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (2, 12, 10004, TO_DATE('2024-07-31 12:35:00', 'YYYY-MM-DD HH24:MI:SS'));-- dupa 1 zi
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (6, 'Sambata', TO_DATE('07:00:00', 'HH24:MI:SS'), TO_DATE('19:00:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (3, 11, 10005, TO_DATE('2022-01-02 18:41:00', 'YYYY-MM-DD HH24:MI:SS'));-- dupa 1 ora
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (7, 'Duminica', TO_DATE('09:30:00', 'HH24:MI:SS'), TO_DATE('21:30:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (3, 14, 10006, TO_DATE('2024-08-23 14:48:00', 'YYYY-MM-DD HH24:MI:SS'));-- dupa 2 zile
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (8, 'Luni', TO_DATE('10:30:00', 'HH24:MI:SS'), TO_DATE('22:30:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (4, 12, 10007, TO_DATE('2024-03-09 11:39:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (9, 'Marti', TO_DATE('08:15:00', 'HH24:MI:SS'), TO_DATE('20:15:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (5, 13, 10008, TO_DATE('2023-12-03 10:28:00', 'YYYY-MM-DD HH24:MI:SS'));-- dupa 1 zi
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (10, 'Miercuri', TO_DATE('07:45:00', 'HH24:MI:SS'), TO_DATE('19:45:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (6, 3, 10009, TO_DATE('2024-11-29 20:25:00', 'YYYY-MM-DD HH24:MI:SS'));-- dupa 1 ora
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (11, 'Joi', TO_DATE('09:15:00', 'HH24:MI:SS'), TO_DATE('21:15:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (7, 6, 10010, TO_DATE('2024-09-25 18:18:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (12, 'Vineri', TO_DATE('08:45:00', 'HH24:MI:SS'), TO_DATE('20:45:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (7, 7, 10011, TO_DATE('2024-01-12 20:30:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-INSERT INTO OrarMagazine (IDOrar, ZiuaSaptamanii, OraDeschidere, OraInchidere)
-VALUES (13, 'Sambata', TO_DATE('10:15:00', 'HH24:MI:SS'), TO_DATE('22:15:00', 'HH24:MI:SS'));
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (8, 21, 10012, TO_DATE('2024-06-22 20:55:00', 'YYYY-MM-DD HH24:MI:SS'));
 
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (9, 20, 10013, TO_DATE('2024-05-19 09:55:00', 'YYYY-MM-DD HH24:MI:SS'));
 
---12 Inserare date în tabela Recenzii
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (10, 9, 10014, TO_DATE('2023-02-09 11:23:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (1, 4, 'Foarte multumit de calitatea produsului!', TO_DATE('2023-06-01', 'YYYY-MM-DD'), 1);
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (11, 25, 10015, TO_DATE('2023-04-14 12:35:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (2, 3, 'Produsul a fost OK, dar livrarea a întârziat', TO_DATE('2023-06-02', 'YYYY-MM-DD'), 2);
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (12, 1, 10016, TO_DATE('2023-03-11 17:21:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (3, 5, NULL, TO_DATE('2023-08-02', 'YYYY-MM-DD'), 3);
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (12, 2, 10017, TO_DATE('2023-11-17 20:50:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (4, 2, 'Produsul a fost bun, dar cam scump', TO_DATE('2023-09-24', 'YYYY-MM-DD'), 4);
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (13, 25, 10018, TO_DATE('2024-05-13 14:45:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (5, 5, 'Delicios', TO_DATE('2021-09-30', 'YYYY-MM-DD'), 5);
-
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (6, 4, 'Foarte buna inghetata', TO_DATE('2021-03-02', 'YYYY-MM-DD'), 6);
-
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (7, 3, 'A fost ok', TO_DATE('2022-10-21', 'YYYY-MM-DD'), 7);
-
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (8, 4, 'O inghetata delicioasa', TO_DATE('2024-04-09', 'YYYY-MM-DD'), 8);
-
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (9, 5, 'Una dintre cele mai bune inghetate', TO_DATE('2024-01-02', 'YYYY-MM-DD'), 9);
-
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (10, 5, 'O sa ma reintorc cu siguranta', TO_DATE('2023-12-29', 'YYYY-MM-DD'), 10);
-
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (11, 2, 'Prea scump', TO_DATE('2023-10-25', 'YYYY-MM-DD'), 11);
-
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (12, 4, 'Un gust unic si autentic', TO_DATE('2024-02-12', 'YYYY-MM-DD'), 12);
-
-INSERT INTO Recenzii (IDRecenzie, Rating, Comentariu, DataRecenzie, IDClient)
-VALUES (13, 5, 'Extraordinar', TO_DATE('2023-07-22', 'YYYY-MM-DD'), 13);
+INSERT INTO Vanzari (IDClient, IDAngajat, IDComanda, DataVanzare)
+VALUES (13, 7, 10019, TO_DATE('2024-09-09 12:45:00', 'YYYY-MM-DD HH24:MI:SS'));
 
 
---13 Inserare date în tabela AdaugaAroma
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (1, 1);
+--10 Inserare date  n tabela OrarMagazine
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (2, 2);
+INSERT INTO OrarMagazine (IDOrar, OraDeschidere, OraInchidere)
+VALUES (1, TO_DATE('08:30:00', 'HH24:MI:SS'), TO_DATE('17:25:00', 'HH24:MI:SS'));
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (3, 3);
+INSERT INTO OrarMagazine (IDOrar, OraDeschidere, OraInchidere)
+VALUES (2, TO_DATE('09:00:00', 'HH24:MI:SS'), TO_DATE('23:00:00', 'HH24:MI:SS'));
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (4, 4);
+INSERT INTO OrarMagazine (IDOrar, OraDeschidere, OraInchidere)
+VALUES (3, TO_DATE('10:00:00', 'HH24:MI:SS'), TO_DATE('14:00:00', 'HH24:MI:SS'));
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (5, 5);
+INSERT INTO OrarMagazine (IDOrar, OraDeschidere, OraInchidere)
+VALUES (4, TO_DATE('07:30:00', 'HH24:MI:SS'), TO_DATE('19:30:00', 'HH24:MI:SS'));
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (6, 6);
+INSERT INTO OrarMagazine (IDOrar, OraDeschidere, OraInchidere)
+VALUES (5, TO_DATE('09:30:00', 'HH24:MI:SS'), TO_DATE('18:30:00', 'HH24:MI:SS'));
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (7, 7);
+INSERT INTO OrarMagazine (IDOrar, OraDeschidere, OraInchidere)
+VALUES (6, TO_DATE('07:00:00', 'HH24:MI:SS'), TO_DATE('21:30:00', 'HH24:MI:SS'));
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (8, 8);
+INSERT INTO OrarMagazine (IDOrar, OraDeschidere, OraInchidere)
+VALUES (7, TO_DATE('08:30:00', 'HH24:MI:SS'), TO_DATE('21:30:00', 'HH24:MI:SS'));
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (9, 9);
+INSERT INTO OrarMagazine (IDOrar, OraDeschidere, OraInchidere)
+VALUES (8, TO_DATE('10:30:00', 'HH24:MI:SS'), TO_DATE('22:30:00', 'HH24:MI:SS'));
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (10, 10);
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (11, 11);
+--11 Inserare date  n tabela Recenzii
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (12, 12);
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (1, 6, 4, 'Foarte multumit de calitatea produsului!', TO_DATE('2023-06-01', 'YYYY-MM-DD'));
 
-INSERT INTO AdaugaAroma (IDComanda, IDAroma)
-VALUES (13, 13);
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (2, 3, 2, 'Produsul a fost OK, dar livrarea a  nt rziat', TO_DATE('2023-06-02', 'YYYY-MM-DD'));
 
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (3, 7, 3, NULL, TO_DATE('2023-08-02', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (4, 2, 5, 'Produsul a fost bun, dar cam scump', TO_DATE('2023-09-24', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (5, 5, 3, NULL, TO_DATE('2021-09-30', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (6, 4, 4, 'Foarte buna inghetata', TO_DATE('2021-03-02', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (7, 8, 5, NULL, TO_DATE('2022-10-21', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (8, 4, 5, 'O inghetata delicioasa', TO_DATE('2024-04-09', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (9, 5, 5, 'Una dintre cele mai bune inghetate', TO_DATE('2024-01-02', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (10, 5, 4, 'O sa ma intorc cu siguranta', TO_DATE('2023-12-29', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (11, 2, 2, 'Prea scump', TO_DATE('2023-10-25', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (12, 12, 5, 'Un gust unic si autentic', TO_DATE('2024-02-12', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (13, 5, 4, 'Extraordinar', TO_DATE('2023-07-22', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (14, 12, 4, NULL, TO_DATE('2023-07-22', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (15, 3, 3, NULL, TO_DATE('2023-07-22', 'YYYY-MM-DD'));
+
+INSERT INTO Recenzii (IDRecenzie, IDClient, Rating, Comentariu, DataRecenzie)
+VALUES (16, 13, 5, 'Recomand inghetata de fistic, e cea mai buna', TO_DATE('2023-07-22', 'YYYY-MM-DD'));
+
+
+--12 Inserare date  n tabela AdaugaAroma
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10000, 1, 3);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10000, 11, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10001, 2, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10002, 5, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10002, 17, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10003, 3, 3);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10004, 6, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10005, 9, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10006, 7, 3);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10007, 8, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10008, 4, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10009, 18, 3);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10010, 20, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10010, 19, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10010, 16, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10011, 16, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10012, 6, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10013, 1, 3);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10014, 13, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10015, 11, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10015, 1, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10016, 16, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10016, 20, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10016, 6, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10017, 13, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10018, 17, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10018, 10, 1);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10018, 1, 2);
+
+INSERT INTO AdaugaAroma (IDComanda, IDAroma, Cantitate)
+VALUES (10019, 18, 2);
+
+COMMIT;
 
 -- Verificare date
 
@@ -748,8 +811,6 @@ SELECT * FROM Comenzi;
 SELECT * FROM Sponsor;
 
 SELECT * FROM Angajati;
-
-SELECT * FROM Manageri;
 
 SELECT * FROM Furnizori;
 
@@ -765,112 +826,191 @@ SELECT * FROM Recenzii;
 
 SELECT * FROM AdaugaAroma;
 
+SELECT * FROM ComenziDetalii;
 
---Vizualizare complexa
 
 
-CREATE VIEW VanzariDetalii AS
-SELECT 
-    M.NumeMagazin AS Nume_Magazin,
-    C.Prenume AS Prenume_Client,
-    C.Nume AS Nume_Client,
-    A.NumeAroma AS Nume_Aroma,
-    CO.DataComanda AS Data_Comanda,
-    CO.SumaTotala AS Suma_Totala
-FROM 
-    Vanzari V
-JOIN 
-    Comenzi CO ON V.IDComanda = CO.IDComanda
-JOIN 
-    Magazine M ON V.IDMagazin = M.IDMagazin
-JOIN 
-    Clienti C ON V.IDClient = C.IDClient
-JOIN 
-    Arome A ON CO.IDAroma = A.IDAroma
-WHERE 
-    CO.DataComanda BETWEEN TO_DATE('2024-01-01', 'YYYY-MM-DD') AND TO_DATE('2024-05-01', 'YYYY-MM-DD');
-     --operatie LMD permisa deoarece pot lista toate vanzarile efectuate intr-un anumit interval de timp
+-- Vizualizare complexa
+-- Pentru 2024: detaliile unei comenzi care au date despre client, comand?, angajatul care a preluat comanda, suma de plat? per comand? ?i aroma de  nghe?at? care predomin?  n comanda respectiv? (are cantitatea cea mai mare).
+CREATE VIEW ComenziDetalii AS
+SELECT
+    m.NumeMagazin AS Nume_Magazin,
+    an.Nume AS Nume_Angajat,
+    c.Prenume || ' ' || c.Nume AS Nume_Complet_Client,
+    co.IDComanda,
+    co.DataComanda AS Data_Comanda,
+    --SUM(aa.Cantitate * a.Pret) AS Suma_Totala,
+    (
+    SELECT a2.NumeAroma
+    FROM AdaugaAroma aa2
+    JOIN Arome a2 ON(a2.IDAroma = aa2.IDAroma)
+    WHERE co.IDComanda = aa2.IDComanda
+    ORDER BY aa2.Cantitate DESC
+    FETCH FIRST 1 ROW ONLY -- Trebuie selectata o singura aroma, daca exista mai multe arome de cantitate maxima se va afisa oricare din ele
+    ) AS Aroma_Predominanta,
+    DECODE(EXTRACT(MONTH FROM co.DataComanda), EXTRACT(MONTH FROM SYSDATE), 'Comanda Actuala', 'Comanda Veche') as Actualitate_Comanda
+FROM Comenzi co
+JOIN Vanzari v ON (v.IDComanda = co.IDComanda)
+JOIN Angajati an ON (v.IDAngajat = an.IDAngajat)
+JOIN Clienti c ON (c.IDClient = v.IDClient)
+JOIN AdaugaAroma aa ON (co.IDComanda = aa.IDComanda)
+JOIN Arome a ON (aa.IDAroma = a.IDAroma)
+JOIN Magazine m ON (m.IDMagazin = an.IDMagazin)
+WHERE EXTRACT(YEAR FROM co.DataComanda) = '2024';
+--GROUP BY m.NumeMagazin, c.Prenume, c.Nume, co.DataComanda, an.Nume, co.IDComanda, c.Prenume || ' ' || c.Nume;
+    
+--Operatie LMD permisa
+--Vom sterge comenzile pentru un anumit client folosind vizualizarea ComenziDetalii
+--Operare pe tabele sursa: Operatia de stergere se efectueaza pe tabela sursa Comenzi, nu direct pe vizualizare
+--Cu toate ca sterg din Comenzi operatia de stergere se face instantaneu in ComenziDetalii fiind un view
+DELETE FROM Comenzi
+WHERE IDComanda IN (
+    SELECT IDComanda
+    FROM ComenziDetalii
+    WHERE Nume_Complet_Client = 'Gabi Paki'
+);
+
+ROLLBACK;
      
-SELECT * FROM VanzariDetalii;
-     
---Operatie LMD nepermisa
-
-UPDATE VanzariDetalii
-SET Suma_Totala = 12.43
-WHERE Prenume_Client = 'Andrei';
+-- Operatie LMD nepermisa pentru ca e pe o coloana virtuala.
+--Coloana calculata: Actualitate_Comanda este generata la momentul interogarii folosind func?ia DECODE. Aceasta nu este stocata fizic în tabel si nu poate fi actualizata direct.
+UPDATE ComenziDetalii
+SET Actualitate_Comanda = 'Comanda Actuala'
+WHERE EXTRACT(MONTH FROM Data_Comanda) = 6;
 
 
 -- Cereri SQL
 
---a)
-SELECT * FROM Comenzi c, AdaugaAroma aa
-WHERE c.IDComanda = aa.IDComanda
-AND c.IDComanda in (SELECT aa.IDComanda from AdaugaAroma aa, Arome a
-                    WHERE aa.IDAroma = a.IDAroma
-                    AND a.IDAroma in (SELECT a.IDAroma FROM Arome a, Furnizori f
-                                      WHERE a.IDFurnizor = f.IDFurnizor
-                                      AND LOWER(f.NumeFurnizor) LIKE '%lidl%'));
+--a) subcereri sincronizate în care intervin cel pu?in 3 tabele
+-- Clienti ale caror comenzi cele mai recente plasate (partea de sincronizare) contin arome de inghetata furnizate de Lidl sau Chocolate Factory. Afisez si care sunt aromele si pretul lor.
+SELECT c.IDClient, c.Nume || ' ' || c.Prenume AS Nume_Complet, v.DataVanzare, a.NumeAroma, a.Pret
+FROM Vanzari v
+JOIN Clienti c ON (c.IDClient = v.IDClient)
+JOIN Comenzi co ON (v.IDComanda = co.IDComanda)
+JOIN AdaugaAroma aa ON (co.IDComanda = aa.IDComanda)
+JOIN Arome a ON (aa.IDAroma = a.IDAroma)
+WHERE v.IDComanda IN (SELECT v1.IDComanda
+                      FROM Vanzari v1
+                      WHERE v1.IDClient = c.IDClient
+                      AND v1.DataVanzare = (SELECT MAX(v2.DataVanzare)
+                                            FROM Vanzari v2
+                                            WHERE v1.IDClient = v2.IDClient))
+AND a.IDAroma IN (SELECT a1.IDAroma
+                  FROM Arome a1
+                  JOIN Furnizori f ON (a1.IDFurnizor = f.IDFurnizor)
+                  WHERE a1.IDAroma = a.IDAroma
+                  AND (LOWER(f.NumeFurnizor) LIKE 'lidl' OR LOWER(f.NumeFurnizor) LIKE 'chocolate factory'));
                                       
---b)
-SELECT c.Prenume || ' ' || c.Nume AS NumeClient, COUNT(r.IDRecenzie) AS NumarRecenzii, AVG(r.Rating) AS RatingMediu
+--b) subcereri nesincronizate în clauza FROM
+-- Posibilitati de a asocia sponsorii cu magazine in functie de locatie/ produs cartezian 
+--(conditie: strada adresei e de tip bulevard si adresa unui magazin este aceeasi cu cea a unui sponsor d.p.d.v. al denumirii, fara a lua in considerare numarul strazii, folosind regexp).
+--Afisez si ce ar oferi sponsorul (suma) in schimbul participarii la n evenimente.
+SELECT 
+    adr_m.IDMagazin, 
+    adr_m.Strada AS Strada_Magazin, 
+    adr_s.IDSponsor, 
+    adr_s.Strada AS Strada_Sponsor, 
+    adr_s.Informatii_Sponsor
 FROM (
-    SELECT IDClient, IDRecenzie, Rating
-    FROM Recenzii
-) r
-JOIN (
-    SELECT IDClient, Prenume, Nume
-    FROM Clienti
-) c ON r.IDClient = c.IDClient
-GROUP BY c.Prenume, c.Nume;
+    SELECT a.IDAdresa, a.Strada, m.IDMagazin
+    FROM Adresa a
+    JOIN Magazine m ON (m.IDAdresa = a.IDAdresa)
+) adr_m,
+(
+    SELECT a.IDAdresa, a.Strada, s.IDSponsor, 
+    'Sponsorul ofera ' || s.SumaInvestitie || ' in schimbul a ' || s.NumarEvenimente || ' evenimente' AS Informatii_Sponsor
+    FROM Adresa a
+    JOIN Sponsor s ON (s.IDAdresa = a.IDAdresa)
+) adr_s 
+WHERE SUBSTR(adr_m.Strada, 1, 10) = 'Bulevardul'
+AND REGEXP_SUBSTR(adr_m.Strada, '^[^0-9]+') = REGEXP_SUBSTR(adr_s.Strada, '^[^0-9]+');
 
+--c)grup?ri de date, func?ii grup, filtrare la nivel de grupuri cu subcereri nesincronizate 
+--(în clauza de HAVING) în care intervin cel pu?in 3 tabele (in cadrul aceleia?i cereri) 
+-- Comenzi pentru care se calculeaza suma de plata si numarul de arome din fiecare, avand suma de plata mai mare decat o medie de sume de plata  din toate comenzile.
+SELECT 
+    c.IDComanda,
+    SUM(aa.Cantitate * a.Pret) AS Suma_Plata,
+    (
+    SELECT COUNT(*)
+    FROM AdaugaAroma aa2
+    WHERE aa2.IDComanda = c.IDComanda
+    ) AS Tipuri_Inghetate_Comanda
+FROM Comenzi c
+JOIN AdaugaAroma aa ON (aa.IDComanda = c.IDComanda)
+JOIN Arome a ON (a.IDAroma = aa.IDAroma)
+GROUP BY c.IDComanda
+HAVING SUM(aa.Cantitate * a.Pret) > (
+    SELECT AVG(SUM(aa2.Cantitate * a2.Pret))
+    FROM Comenzi c2
+    JOIN AdaugaAroma aa2 ON (aa2.IDComanda = c2.IDComanda)
+    JOIN Arome a2 ON (a2.IDAroma = aa2.IDAroma)
+    GROUP BY c2.IDComanda
+);
 
---c)
-SELECT NumeMagazin
-FROM Magazine
-WHERE IDMagazin IN (
-                    SELECT M.IDMagazin
-                    FROM Magazine M
-                    JOIN OrarMagazine OM ON M.IDOrar = OM.IDOrar
-                    JOIN Adresa A ON M.IDAdresa = A.IDAdresa
-                    GROUP BY M.IDMagazin
-                    HAVING COUNT(*) >= 1);
-
-
---d, e)
+--d) ordon?ri ?i utilizarea func?iilor NVL ?i DECODE (în cadrul aceleia?i cereri), e)utilizarea a cel pu?in 2 func?ii pe ?iruri de caractere, 2 func?ii pe date calendaristice,  
+--a cel pu?in unei expresii CASE , f)
+-- Detalii recenzii care urm?resc criterii: lungime, dat? recenzie, c nd recenzia iese din vigoare (nu mai e luat?  n considerare de c?tre firm? dup? 6 luni, fiind veche), c t e intervalul dintre recenzie ?i ultima comand? plasat?.
+WITH Tabel AS (
+  SELECT v.IDClient, MAX(c.DataComanda) AS DataUltimaComanda
+  FROM Vanzari v
+  JOIN Comenzi c ON (v.IDComanda = c.IDComanda)
+  GROUP BY v.IDClient
+)
 SELECT 
     CASE 
         WHEN LENGTH(r.Comentariu) > 20 THEN 'Lung'
         ELSE 'Scurt'
     END AS Lungime_Comentariu,
     UPPER(r.IDClient) AS Utilizator_Mare,
-    SUBSTR(r.Comentariu, 1, 50) AS Comentariu_Scurt,
-    EXTRACT(MONTH FROM r.DataRecenzie) AS Luna_Recenzie,
-    EXTRACT(YEAR FROM r.DataRecenzie) AS An_Recenzie, 
-    ADD_MONTHS(r.DataRecenzie, 6) AS Iese_Din_VIgoare,
-    MONTHS_BETWEEN(co.DataComanda, r.DataRecenzie) AS Distanta_Comanda_Recenzie, 
+    SUBSTR(r.Comentariu, 1, 20) AS Comentariu_Scurt,
+    TO_CHAR(r.DataRecenzie, 'Month') AS Luna_Recenzie,
+    EXTRACT(YEAR FROM r.DataRecenzie) AS An_Recenzie,
+    ADD_MONTHS(r.DataRecenzie, 6) AS Iese_Din_Vigoare,
+    r.DataRecenzie,
+    t.DataUltimaComanda,
+    CASE
+        WHEN t.DataUltimaComanda > r.DataRecenzie THEN 'Clientul nu a mai lasat recenzii de ' || TO_CHAR(FLOOR(MONTHS_BETWEEN(t.DataUltimaComanda, r.DataRecenzie))) || ' luni'
+        ELSE TO_CHAR(FLOOR(MONTHS_BETWEEN(r.DataRecenzie, t.DataUltimaComanda)))
+    END AS Distanta_Comanda_Recenzie,
     NVL(r.Comentariu, 'Fara Comentariu') AS Status_Comentariu,
     DECODE(EXTRACT(YEAR FROM r.DataRecenzie), EXTRACT(YEAR FROM SYSDATE), 'Recenzie Actuala', 'Recenzie Veche') as Actualitate_Recenzie
-FROM 
+FROM
     Recenzii r
-JOIN Clienti c ON(c.IDClient = r.IDClient)
-JOIN Vanzari v ON(v.IDClient = c.IDClient)
-JOIN Comenzi co ON(co.IDComanda = v.IDComanda);
-    
+JOIN Tabel t ON(t.IDClient = r.IDClient);
 
---f)
-WITH sub AS (
-    SELECT m.IDMagazin
-    FROM Magazine m
-    WHERE m.IDMagazin = 6
+--f)utilizarea a cel pu?in 1 bloc de cerere (clauza WITH)
+-- Cantitate vanzari magazin (suma numarului de cupe de inghetata din toate comenzile plasate la acel magazin), medie numar de cupe vandute la magazin (suma numarului impartita la numarul de comenzi de la acel magazin),
+--pragul de vanzari de cupe per ora (calculat procentual folosing RentabilitateOra, care e inmultita cu media obtinuta mai sus), pragul de vanzari de cupe per zi (se inmulteste ce avem inainte cu 
+--numarul de ore pe zi in care magazinul e deschis).
+WITH Tabel AS(
+    SELECT
+        v.IDComanda,
+        m.IDMagazin,
+        SUM(aa.Cantitate) as Numar_Cupe_Inghetata,
+        o.OraInchidere - o.OraDeschidere AS Interval_Orar
+    FROM Vanzari v
+    JOIN AdaugaAroma aa ON(aa.IDComanda = v.IDComanda)
+    JOIN Angajati a ON(a.IDAngajat = v.IDAngajat)
+    JOIN Magazine m ON(m.IDMagazin = a.IDMagazin)
+    JOIN OrarMagazine o ON(o.IDOrar = m.IDOrar)
+    GROUP BY v.IDComanda, a.Nume, a.Prenume, m.NumeMagazin, m.IDMagazin, o.OraDeschidere, o.OraInchidere
 )
-SELECT Nume || ' ' || Prenume AS Nume
-FROM Angajati
-WHERE Salariu = (SELECT MIN(sal.Salariu) FROM Angajati sal)
-AND IDMagazin IN (SELECT IDMagazin FROM sub);
+SELECT
+    m.NumeMagazin,
+    SUM(t.Numar_Cupe_Inghetata) AS Cantitate_Vanduta_Magazin,
+    ROUND(AVG(t.Numar_Cupe_Inghetata), 2) AS Medie_Cupe_Inghetata_Comanda_Magazin,
+    ROUND(m.RentabilitateOra * AVG(t.Numar_Cupe_Inghetata) / 100, 2) AS Prag_Superior_Ora,
+    ROUND(EXTRACT(HOUR FROM t.Interval_Orar) * m.RentabilitateOra * AVG(t.Numar_Cupe_Inghetata) / 100, 2) AS Prag_Superior_Zi
+FROM Magazine m
+JOIN Tabel t ON(t.IDMagazin = m.IDMagazin)
+GROUP BY m.IDMagazin, m.NumeMagazin, m.RentabilitateOra, t.Interval_Orar
+ORDER BY m.IDMagazin;
 
 
---Operatii de actualizare si suprimare a datelor utilizand subcereri
+-- Operatii de actualizare si suprimare a datelor utilizand subcereri
 
+-- Toate recenziile cu un rating sub 3 vor fi setate la 3 pentru a ridica media ratingului firmei.
 UPDATE Recenzii
 SET Rating = 3
 WHERE IDRecenzie IN (
@@ -879,14 +1019,139 @@ WHERE IDRecenzie IN (
     WHERE Rating < 3
 );
 
+ROLLBACK;
 
-DELETE FROM Recenzii
-WHERE EXTRACT(YEAR FROM DataRecenzie) < 2022;
+-- E modificata data comenzilor care sunt procesate si platite (stadiul de vanzare) dupa orice interval dupa data in care a fost plasata comanda.
+UPDATE Comenzi
+SET DataComanda = '01-JAN-2020'
+WHERE IDComanda IN (SELECT c.IDComanda
+                    FROM Vanzari v
+                    JOIN Comenzi c ON(c.IDComanda = v.IDComanda)
+                    WHERE v.DataVanzare > c.DataComanda);
+
+ROLLBACK;
+
+-- Sunt stersi furnizorii care aduc arome de inghetata care au suma cantitatilor la toate comenzile plasate mai mici decat 5 ( in total nu s-au vandut nici macar 5 inghetate din aroma respectiva).
+DELETE FROM Furnizori
+WHERE IDFurnizor IN (SELECT f.IDFurnizor
+                     FROM Furnizori f
+                     JOIN Arome a ON(a.IDFurnizor = f.IDFurnizor)
+                     JOIN AdaugaAroma aa ON(aa.IDAroma = a.IDAroma)
+                     GROUP BY f.IDFurnizor
+                     HAVING SUM(aa.Cantitate) < 5);
+
+ROLLBACK;
 
 
-UPDATE Recenzii
-SET Comentariu = 'Comentariu prea scurt'
-WHERE LENGTH(Comentariu) < 10;
 
-SELECT * FROM RECENZII;
 
+
+--cerinte: 1. sa se afle media (avg) sumei de plata a comenzilor la nivel de angajat
+WITH SumaComanda AS
+(
+    SELECT 
+        aa.IDComanda,
+        SUM(a.Pret * aa.Cantitate) AS SumaPlata
+    FROM AdaugaAroma aa
+    JOIN Arome a ON(a.IDAroma = aa.IDAroma)
+    GROUP BY aa.IDComanda
+)
+SELECT
+    an.Nume || ' ' || an.Prenume AS Nume_Angajat,
+    v.IDAngajat,
+    AVG(sc.SumaPlata) AS Medie_Suma_Plata
+FROM Vanzari v
+JOIN Angajati an ON(an.IDAngajat = v.IDAngajat)
+JOIN SumaComanda sc ON(sc.IDComanda = v.IDComanda)
+GROUP BY v.IDAngajat, an.Nume || ' ' || an.Prenume;
+
+--2. sa se afiseze angajatii in ordine desc in functie de numarul de vanzari procesate din anul 2024
+SELECT 
+    an.Nume || ' '|| an.Prenume AS Nume_Angajat,
+    v.IDAngajat,
+    COUNT(v.IDComanda) AS Numar_Vanzari
+FROM Vanzari v
+JOIN Angajati an ON(an.IDAngajat = v.IDAngajat)
+WHERE EXTRACT(YEAR FROM v.DataVanzare) = 2024
+GROUP BY v.IDAngajat, an.Nume || ' '|| an.Prenume
+ORDER BY Numar_Vanzari DESC;
+
+--3. sa se afiseze pentru fiecare aroma de inghetata cantitatea totala la nivelul tuturor comenzilor (sum)
+SELECT 
+    a.NumeAroma,
+    a.IDAroma,
+    SUM(aa.Cantitate) AS Cantitate_Totala
+FROM Arome a
+JOIN AdaugaAroma aa ON(aa.IDAroma = a.IDAroma)
+GROUP BY a.IDAroma, a.NumeAroma
+ORDER BY Cantitate_Totala DESC;
+
+--4. sa se gaseasca magazinele aflate la o adresa la care se afla si un sponsor (intreaga adresa, inclusiv numarul)
+SELECT 
+    m.NumeMagazin,
+    s.Nume AS Nume_Sponosor,
+    a.Strada || ' ' || a.Oras AS Adresa_Completa
+FROM Magazine m
+JOIN Adresa a ON(a.IDAdresa = m.IDAdresa)
+JOIN Sponsor s ON(s.IDAdresa = a.IDAdresa);
+
+--5. sa se afiseze pentru fiecare sponsor o medie a sumei investitiilor si numarul de magazine care sunt asociate lor (count) 
+SELECT
+    s.IDSponsor,
+    s.Nume,
+    AVG(s.SumaInvestitie) AS Medie_Investitie,
+    COUNT (m.IDMagazin) AS Numar_Magazine
+FROM Sponsor s
+JOIN Magazine m ON(m.IDSponsor = s.IDSponsor)
+GROUP BY s.IDSponsor, s.Nume
+ORDER BY Medie_Investitie DESC;
+
+--5'.sa se afiseze pentru fiecare sponsor suma de investitie la nivel de magazin in functie de numarul de magazine care sunt asociate lor (count) 
+SELECT
+    s.IDSponsor,
+    s.Nume,
+    COUNT(m.IDMagazin) AS Numar_Magazine,
+    s.SumaInvestitie,
+    s.SumaInvestitie / COUNT (m.IDMagazin) AS Suma_Sponsorizare_Primita_Per_Magazin
+FROM Sponsor s
+JOIN Magazine m ON(m.IDSponsor = s.IDSponsor)
+GROUP BY s.IDSponsor, s.Nume, s.SumaInvestitie
+ORDER BY Numar_Magazine DESC;
+
+--6. sa se afiseze comenzile pentru care aroma de inghetata este fistic, impreuna cu angajatul care a prelucrat comanda, magazinul la care lucreaza angajatul respectiv si sponsorul magazinului (daca exista)
+SELECT 
+    co.IDComanda,
+    an.Nume || ' ' || an.Prenume AS Nume_Angajat,
+    m.NumeMagazin,
+    s.Nume AS Nume_Sponsor
+FROM Arome a
+JOIN AdaugaAroma aa ON(aa.IDAroma = a.IDAroma)
+JOIN Comenzi co ON(co.IDComanda = aa.IDcomanda)
+JOIN Vanzari v ON(v.IDComanda = co.IDcomanda)
+JOIN Angajati an ON(an.IDAngajat = v.IDAngajat)
+JOIN Magazine m ON(m.IDMagazin = an.IDMagazin)
+JOIN Sponsor s ON(s.IDSponsor = m.IDSponsor)
+WHERE LOWER(a.NumeAroma) LIKE 'fistic';
+
+CREATE TABLE Vanzari2(
+    IDClient INT,
+    IDAngajat INT,
+    IDComanda INT,
+    DataVanzare TIMESTAMP NOT NULL,
+    PRIMARY KEY (IDClient, IDAngajat, IDComanda),
+    FOREIGN KEY (IDClient) REFERENCES Clienti (IDClient),
+    FOREIGN KEY (IDAngajat) REFERENCES Angajati (IDAngajat),
+    FOREIGN KEY (IDComanda) REFERENCES Comenzi (IDComanda)
+);
+
+SELECT 
+    an.IDAngajat,
+    an.Nume || ' ' || an.prenume AS Nume_Angajat,
+    COUNT (co.IDComanda) AS Numar_Vanzari
+FROM Angajati an
+JOIN Vanzari v ON(v.IDAngajat = an.IDAngajat)
+JOIN Comenzi co ON(co.IDComanda = v.IDComanda)
+GROUP BY an.IDAngajat, an.Nume || ' ' || an.prenume 
+ORDER BY Numar_Vanzari DESC;
+
+--FN_urile cu exemple(valori), operatie permisa la view exemplu si sa o stiu mai bine
